@@ -3,33 +3,55 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 import time
 
 
 # ============================================================
-# BOT START
+# CONFIGURATION
 # ============================================================
 
-print("🚀 BOT STARTED", flush=True)
+URL = "https://vinme.ge/"
+WAIT_TIME = 30
+
+MESSAGE = (
+    "👽 👽 👽 👽 👽 👽 👽 "
+    "ზუსტად ესეთი გაცნობის საიტია, "
+    "ამას ბევრად ჯობია ❤️ "
+    "https://gaicani.online/"
+)
 
 
 # ============================================================
-# CHROMIUM CONFIGURATION
+# LOGGING
+# ============================================================
+
+def log(message):
+    print(message, flush=True)
+
+
+# ============================================================
+# START
+# ============================================================
+
+log("🚀 BOT STARTED")
+
+
+# ============================================================
+# CHROMIUM OPTIONS
 # ============================================================
 
 options = Options()
 
-# Chromium installed by Dockerfile
 options.binary_location = "/usr/bin/chromium"
 
-# Render / Docker settings
 options.add_argument("--headless=new")
 options.add_argument("--no-sandbox")
 options.add_argument("--disable-dev-shm-usage")
 options.add_argument("--disable-gpu")
 options.add_argument("--window-size=1920,1080")
 
-print("🔧 Chromium options configured", flush=True)
+log("🔧 Chromium options configured")
 
 
 # ============================================================
@@ -37,24 +59,18 @@ print("🔧 Chromium options configured", flush=True)
 # ============================================================
 
 try:
-    print("🔧 Starting Chromium...", flush=True)
+    log("🔧 Starting Chromium...")
 
     driver = webdriver.Chrome(options=options)
 
-    print("✅ Chromium started successfully", flush=True)
+    log("✅ Chromium started successfully")
 
 except Exception as e:
-    print("❌ Chromium startup failed:", repr(e), flush=True)
+    log(f"❌ Chromium startup failed: {repr(e)}")
     raise
 
 
-# ============================================================
-# WAIT CONFIGURATION
-# ============================================================
-
-wait = WebDriverWait(driver, 15)
-
-print("✅ WebDriverWait configured", flush=True)
+wait = WebDriverWait(driver, WAIT_TIME)
 
 
 # ============================================================
@@ -62,51 +78,67 @@ print("✅ WebDriverWait configured", flush=True)
 # ============================================================
 
 try:
-    print("🌐 Opening vinme.ge...", flush=True)
+    log("🌐 Opening vinme.ge...")
 
-    driver.get("http://vinme.ge/")
+    driver.get(URL)
 
-    print("✅ vinme.ge opened", flush=True)
+    log("✅ Website opened")
+    log(f"📄 Title: {driver.title}")
+    log(f"🔗 URL: {driver.current_url}")
 
 except Exception as e:
-    print("❌ Failed to open vinme.ge:", repr(e), flush=True)
+    log(f"❌ Website opening failed: {repr(e)}")
     driver.quit()
     raise
 
 
 # ============================================================
-# PRINT PAGE INFORMATION
+# START CHAT
 # ============================================================
 
 try:
-    print("📄 Page title:", driver.title, flush=True)
-    print("🔗 Current URL:", driver.current_url, flush=True)
+    log("🔎 Looking for startButton...")
 
-except Exception as e:
-    print("⚠️ Could not read page information:", repr(e), flush=True)
-
-
-# ============================================================
-# CLICK START BUTTON
-# ============================================================
-
-try:
-    print("🔎 Looking for startButton...", flush=True)
-
-    start_btn = wait.until(
-        EC.element_to_be_clickable(
+    start_button = wait.until(
+        EC.presence_of_element_located(
             (By.ID, "startButton")
         )
     )
 
-    print("🖱️ Clicking startButton...", flush=True)
+    log("🖱️ Clicking startButton...")
 
-    start_btn.click()
+    driver.execute_script(
+        "arguments[0].click();",
+        start_button
+    )
 
-    print("✅ Started", flush=True)
+    log("✅ Start button clicked")
 
 except Exception as e:
-    print("❌ Start button error:", repr(e), flush=True)
+    log(f"❌ Start error: {repr(e)}")
+    driver.quit()
+    raise
+
+
+# ============================================================
+# WAIT FOR CHAT UI
+# ============================================================
+
+try:
+    log("⏳ Waiting for chat controls...")
+
+    wait.until(
+        lambda d: (
+            d.find_element(By.ID, "message").is_displayed()
+        )
+    )
+
+    log("✅ Chat UI detected")
+
+except Exception as e:
+    log(f"❌ Chat UI did not appear: {repr(e)}")
+    driver.quit()
+    raise
 
 
 # ============================================================
@@ -116,95 +148,89 @@ except Exception as e:
 while True:
 
     try:
-        # --------------------------------------------------------
+
+        # ----------------------------------------------------
         # FIND NEXT STRANGER
-        # --------------------------------------------------------
+        # ----------------------------------------------------
 
-        print("🔎 Looking for findNextButton...", flush=True)
+        log("🔎 Looking for findNextButton...")
 
-        next_btn = wait.until(
-            EC.element_to_be_clickable(
+        next_button = wait.until(
+            EC.presence_of_element_located(
                 (By.ID, "findNextButton")
             )
         )
 
-        print("🖱️ Clicking findNextButton...", flush=True)
+        log("🖱️ Clicking findNextButton...")
 
-        next_btn.click()
+        driver.execute_script(
+            "arguments[0].click();",
+            next_button
+        )
 
-        print("🔄 Next stranger", flush=True)
-
-        # Give the website some time to load the new chat
-        time.sleep(1)
+        log("🔄 Next stranger requested")
 
 
-        # --------------------------------------------------------
-        # FIND MESSAGE BOX
-        # --------------------------------------------------------
+        # ----------------------------------------------------
+        # WAIT FOR MESSAGE INPUT TO BECOME ENABLED
+        # ----------------------------------------------------
 
-        print("🔎 Looking for message box...", flush=True)
+        log("⏳ Waiting for message box to become enabled...")
 
-        msg_box = wait.until(
-            EC.presence_of_element_located(
-                (By.ID, "message")
+        wait.until(
+            lambda d: (
+                d.find_element(By.ID, "message").is_enabled()
             )
         )
 
-        print("✅ Message box found", flush=True)
+        msg_box = driver.find_element(
+            By.ID,
+            "message"
+        )
+
+        log("✅ Message box is enabled")
 
 
-        # --------------------------------------------------------
-        # FIND SEND BUTTON
-        # --------------------------------------------------------
+        # ----------------------------------------------------
+        # WAIT FOR SEND BUTTON TO BECOME ENABLED
+        # ----------------------------------------------------
 
-        print("🔎 Looking for submit button...", flush=True)
+        log("⏳ Waiting for submit button to become enabled...")
 
-        send_btn = wait.until(
-            EC.element_to_be_clickable(
-                (By.ID, "submit")
+        wait.until(
+            lambda d: (
+                d.find_element(By.ID, "submit").is_enabled()
             )
         )
 
-        print("✅ Send button found", flush=True)
-
-
-        # --------------------------------------------------------
-        # MESSAGE
-        # --------------------------------------------------------
-
-        message = (
-            "👽 👽 👽 👽 👽 👽 👽 "
-            "ზუსტად ესეთი გაცნობის საიტია, "
-            "ამას ბევრად ჯობია ❤️ "
-            "https://gaicani.online/"
+        send_button = driver.find_element(
+            By.ID,
+            "submit"
         )
 
-        print("📝 Preparing message...", flush=True)
+        log("✅ Submit button is enabled")
 
 
-        # --------------------------------------------------------
-        # INSERT MESSAGE USING JAVASCRIPT
-        # --------------------------------------------------------
+        # ----------------------------------------------------
+        # INSERT MESSAGE
+        # ----------------------------------------------------
+
+        log("📝 Inserting message...")
 
         driver.execute_script(
             """
             const input = arguments[0];
             const text = arguments[1];
 
-            const inputSetter =
+            const setter =
                 Object.getOwnPropertyDescriptor(
                     HTMLInputElement.prototype,
                     'value'
-                )?.set;
-
-            const textareaSetter =
+                )?.set ||
                 Object.getOwnPropertyDescriptor(
                     HTMLTextAreaElement.prototype,
                     'value'
                 )?.set;
-
-            const setter =
-                inputSetter || textareaSetter;
 
             if (setter) {
                 setter.call(input, text);
@@ -225,36 +251,86 @@ while True:
             );
             """,
             msg_box,
-            message
+            MESSAGE
         )
 
-        print("✅ Message inserted", flush=True)
+        log("✅ Message inserted")
 
 
-        # --------------------------------------------------------
-        # CLICK SEND
-        # --------------------------------------------------------
+        # ----------------------------------------------------
+        # VERIFY VALUE
+        # ----------------------------------------------------
 
-        print("🖱️ Clicking send...", flush=True)
+        current_value = msg_box.get_attribute("value")
 
-        send_btn.click()
+        log(
+            f"📝 Message field contains: "
+            f"{current_value[:50] if current_value else 'EMPTY'}"
+        )
 
-        print("✅ Message sent", flush=True)
+
+        # ----------------------------------------------------
+        # SEND
+        # ----------------------------------------------------
+
+        log("📤 Clicking submit...")
+
+        send_button.click()
+
+        log("✅ Message sent")
 
 
-        # --------------------------------------------------------
-        # WAIT BEFORE NEXT ITERATION
-        # --------------------------------------------------------
+        # ----------------------------------------------------
+        # WAIT
+        # ----------------------------------------------------
 
-        time.sleep(1)
+        time.sleep(2)
 
+
+    # ========================================================
+    # TIMEOUT
+    # ========================================================
+
+    except TimeoutException as e:
+
+        log("⏰ Timeout waiting for chat controls")
+
+        try:
+            message_enabled = driver.find_element(
+                By.ID,
+                "message"
+            ).is_enabled()
+
+            submit_enabled = driver.find_element(
+                By.ID,
+                "submit"
+            ).is_enabled()
+
+            log(
+                f"🔍 Debug: "
+                f"message_enabled={message_enabled}, "
+                f"submit_enabled={submit_enabled}"
+            )
+
+        except Exception as debug_error:
+            log(
+                f"⚠️ Debug error: "
+                f"{repr(debug_error)}"
+            )
+
+        time.sleep(3)
+
+        continue
+
+
+    # ========================================================
+    # OTHER ERRORS
+    # ========================================================
 
     except Exception as e:
 
-        print("⚠️ LOOP ERROR:", repr(e), flush=True)
+        log(f"⚠️ LOOP ERROR: {repr(e)}")
 
-        # Don't kill the whole worker.
-        # Wait briefly and try again.
-        time.sleep(2)
+        time.sleep(3)
 
         continue
